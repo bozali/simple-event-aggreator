@@ -14,6 +14,10 @@ In this example we will create an event and subscribe to it. After the subscript
 // A simple event that will have a string as a payload.
 class MessageEvent : public simple::ea::PubSubEvent<std::string> { }
 
+void HandleMessage(std::string message) {
+	std::cout << "Message: " << message << "\n";
+}
+
 int main()
 {
     simple::ea::EventAggregator aggregator;
@@ -39,6 +43,10 @@ In this example we will subscribe to an event and unsubscribe to it with a subsc
 // A simple event that will have a string as a payload.
 class MessageEvent : public simple::ea::PubSubEvent<std::string> { }
 
+void HandleMessage(std::string message) {
+	std::cout << "Message: " << message << "\n";
+}
+
 int main()
 {
     simple::ea::EventAggregator aggregator;
@@ -51,6 +59,41 @@ int main()
     
     return 0;
 }
+
+```
+
+
+## Example 3: Real world example
+
+```c++
+
+struct BroadcastMessageArgs {
+    Client* const sender;
+    std::string message;
+};
+
+class BroadcastMessageEvent : public simple::ea::PubSubEvent<BroadcastMessageArgs> { };
+
+class Client {
+public:
+    Client(std::shared_ptr<EventAggregator> aggregator) {
+        token_ = aggregator_->GetEvent<BroadcastMessageEvent>()->Subscribe(std::bind(&Client::HandleBroadcast, this, std::placeholders::_1))
+    }
+    
+    void SendMessage(std::string message) {
+        aggregator_->GetEvent<BroadcastMessageEvent>()->Publish(BroadcastMessageArgs{ this, message });
+    }
+    
+    void HandleBroadcast(BroadcastMessageArgs args) {
+        // ...
+    }
+    
+private:
+    int32_t id_;
+    
+    std::shared_ptr<SubscriptionToken> token_;
+    std::shared_ptr<EventAggregator> aggregator_;
+};
 
 ```
 
