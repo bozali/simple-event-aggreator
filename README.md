@@ -7,7 +7,7 @@ The EventAggregator allows to subscribe to events and publish these events with 
 
 ## Example 1: Creating a custom event, subscribing and publishing
 
-This example represents how to create an event and and subscribe to it. After subscription it will notify each subscriber to the event type with the specified payload.
+In this example we will create an event and subscribe to it. After the subscription we will notify each subscriber of the event with a payload.
 
 ```c++
 
@@ -32,7 +32,7 @@ int main()
 
 ## Example 2: Creating a custom event, subscribing and unsubscribing
 
-This example shows how we can unsubscribe a event type with a subscription token
+In this example we will subscribe to an event and unsubscribe to it with a subscription token.
 
 ```c++
 
