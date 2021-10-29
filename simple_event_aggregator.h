@@ -30,17 +30,24 @@ inline static constexpr size_t GetHashCode() {
 class SubscriptionToken {
 public:
     inline SubscriptionToken() {
-        UuidCreate(&uuid);
+        UuidCreate(&uuid_);
+    }
+
+    inline ~SubscriptionToken() {
+        this->Unsubscribe();
     }
 
     inline void Unsubscribe() {
-        if (deleter != nullptr) {
-            deleter();
+        if (deleter_ != nullptr) {
+            deleter_();
         }
     }
 
-    UUID uuid;
-    std::function<void()> deleter;
+private:
+    UUID uuid_;
+    std::function<void()> deleter_;
+
+    template <typename> friend class PubSubEvent;
 };
 
 
@@ -51,38 +58,64 @@ public:
 
 
 template <typename TPayload>
+class Subscription {
+public:
+    inline Subscription(const std::function<void(TPayload)>& callback) {
+        callback_ = callback;
+        token_ = std::make_shared<SubscriptionToken>();
+    }
+
+    inline Subscription(const std::function<void(TPayload)>& callback,
+                 const std::function<bool(TPayload)>& filter)
+        : Subscription(callback)
+    { }
+
+private:
+    std::function<bool(TPayload)> filter_;
+    std::function<void(TPayload)> callback_;
+    std::shared_ptr<SubscriptionToken> token_;
+
+    template <typename> friend class PubSubEvent;
+};
+
+
+template <typename TPayload>
 class PubSubEvent : public PubSubEventBase {
 public:
-    using FnCallback = std::function<void(TPayload)>;
+    inline std::shared_ptr<SubscriptionToken> Subscribe(const std::function<void(TPayload)>& callback, const std::function<bool(TPayload)>& filter = nullptr) {
 
-    /** TODO We need a function with variadic args of callback so if we register them we can unsubscribe them with just one token. */
-    inline std::shared_ptr<SubscriptionToken> Subscribe(const FnCallback& callback) {
-        auto token = std::make_shared<SubscriptionToken>();
+        Subscription<TPayload> new_subscription(callback);
+        new_subscription.filter_ = filter;
 
-        token->deleter = [=]() {
+        new_subscription.token_->deleter_ = [=]() {
             /* Search for pair that contains the subscription uuid as the one we want to delete. */
             auto it = std::remove_if(
                 subscriptions_.begin(),
                 subscriptions_.end(),
-                [=, this](std::pair<std::shared_ptr<SubscriptionToken>, FnCallback> pair) { return token->uuid == pair.first->uuid; });
+                [=, this](Subscription<TPayload> subscription) { return new_subscription.token_->uuid_ == subscription.token_->uuid_; });
 
             if (it != subscriptions_.end()) {
                 subscriptions_.erase(it);
             }
         };
 
-        subscriptions_.push_back(std::make_pair(token, callback));
-        return token;
+        subscriptions_.push_back(new_subscription);
+
+        return new_subscription.token_;
     }
 
     inline void Publish(TPayload payload) {
-        for (std::pair<std::shared_ptr<SubscriptionToken>, FnCallback>& pair : subscriptions_) {
-            pair.second(payload);
+        for (Subscription<TPayload>& subscription : subscriptions_) {
+            if (subscription.filter_ != nullptr && !subscription.filter_(payload)) {
+                continue;
+            }
+            
+            subscription.callback_(payload);
         }
     }
 
 private:
-    std::vector<std::pair<std::shared_ptr<SubscriptionToken>, FnCallback>> subscriptions_;
+    std::vector<Subscription<TPayload>> subscriptions_;
 };
 
 

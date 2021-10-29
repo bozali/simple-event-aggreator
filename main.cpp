@@ -1,30 +1,23 @@
 ﻿#include <iostream>
+#include <string>
 
 #include "simple_event_aggregator.h"
 
-class RandomEvent : public simple::ea::PubSubEvent<int32_t> { };
+class MessageEvent : public simple::ea::PubSubEvent<std::string> { };
 
 
-void HandleRandom(int32_t random) {
-	std::cout << "Random: " << random << "\n";
-}
-
-
-void HandleRandom2(int32_t random) {
-	std::cout << "Random2: " << random << "\n";
+void HandleMessage(std::string message) {
+	std::cout << "Message []: "  << message << "\n";
 }
 
 
 int main()
 {
 	simple::ea::EventAggregator aggregator;
-	auto event = aggregator.GetEvent<RandomEvent>();
-	auto token = event->Subscribe(HandleRandom);
-	event->Subscribe(HandleRandom2);
+	aggregator.GetEvent<MessageEvent>()->Subscribe(HandleMessage, [](std::string message) { return message == "Something"; });
 
-	token->Unsubscribe();
-
-	aggregator.GetEvent<RandomEvent>()->Publish(10);
+	aggregator.GetEvent<MessageEvent>()->Publish("Published message...");
+	aggregator.GetEvent<MessageEvent>()->Publish("Something");
 
 	return 0;
 }
