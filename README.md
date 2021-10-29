@@ -62,8 +62,35 @@ int main()
 
 ```
 
+## Example 3: Subscription filter
 
-## Example 3: Real world example
+Filters allow to check if a subscriber should execute to an event. In this example only published events with payload over 10 will be output.
+
+```c++
+
+class IntegerEvent : public simple::ea::PubSubEvent<int> { };
+
+
+void HandleInteger(int value) {
+	std::cout << "Value: " << value << "\n";
+}
+
+
+int main()
+{
+	simple::ea::EventAggregator aggregator;
+	aggregator.GetEvent<IntegerEvent>()->Subscribe(HandleInteger, [](int value) { return value > 10; });
+
+	aggregator.GetEvent<IntegerEvent>()->Publish(5);
+	aggregator.GetEvent<IntegerEvent>()->Publish(15);
+
+	return 0;
+}
+
+```
+
+
+## Example 4: Real world example
 
 ```c++
 
